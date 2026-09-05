@@ -7,5 +7,9 @@ Jinja2==3.1.6
 MarkupSafe==3.0.3
 psycopg==3.3.5
 psycopg-binary==3.3.5
+pyaes==1.6.1
+pyasn1==0.6.4
 python-dotenv==1.2.3
+rsa==4.9.1
+Telethon==1.44.0
 Werkzeug==3.1.8
