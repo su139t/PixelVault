@@ -21,7 +21,7 @@ def get_client():
     return TelegramClient(str(SESSION_PATH), int(api_id), api_hash)
 
 
-def login():
+async def login():
     client = get_client()
-    client.start(phone=TELEGRAM_CONFIG.get("phone"))
+    await client.start(phone=TELEGRAM_CONFIG.get("phone"))
     return client
