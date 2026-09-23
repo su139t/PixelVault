@@ -1,50 +1,43 @@
-import { useState } from "react";
-
-import api from "./services/api";
-import { createUser as createUserRequest } from "./services/userService";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "./context/AuthContext";
+import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import { Layout } from "./components/layout/Layout";
+import LoginPage from "./pages/LoginPage";
+import PhotosPage from "./pages/PhotosPage";
+import AlbumsPage from "./pages/AlbumsPage";
+import FavoritesPage from "./pages/FavoritesPage";
+import PeoplePage from "./pages/PeoplePage";
+import SearchPage from "./pages/SearchPage";
 
 function App() {
-  const [message, setMessage] = useState("");
-
-  const testBackend = async () => {
-    try {
-      const response = await api.get("/health");
-
-      setMessage(response.data.status);
-    } catch (error) {
-      console.error(error);
-      setMessage("Backend connection failed");
-    }
-  };
-
-  const handleCreateUser = async () => {
-    try {
-      const response = await createUserRequest({
-        telegram_user_id: 1234567589,
-        name: "Sumit",
-        username: "sumit",
-        email: "sumit@example.com",
-      });
-
-      console.log(response.data);
-
-      setMessage(response.data.message);
-    } catch (error) {
-      console.error(error);
-      setMessage("User creation failed");
-    }
-  };
-
   return (
-    <div>
-      <h1>PixelVault</h1>
+    <AuthProvider>
+      <Router>
+        <Routes>
+          {/* Public route */}
+          <Route path="/login" element={<LoginPage />} />
 
-      <button onClick={testBackend}>Test Backend</button>
-
-      <button onClick={handleCreateUser}>Create Test User</button>
-
-      <p>{message}</p>
-    </div>
+          {/* Protected routes */}
+          <Route
+            path="/*"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Routes>
+                    <Route path="/" element={<PhotosPage />} />
+                    <Route path="/search" element={<SearchPage />} />
+                    <Route path="/albums" element={<AlbumsPage />} />
+                    <Route path="/people" element={<PeoplePage />} />
+                    <Route path="/tags" element={<div className="text-white/60 text-center py-20">Tags — Coming Soon</div>} />
+                    <Route path="/favorites" element={<FavoritesPage />} />
+                  </Routes>
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 }
 

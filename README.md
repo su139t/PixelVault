@@ -23,23 +23,23 @@ Backend
 ## Current project status
 
 Completed
-- React + Vite frontend initialized
-- Flask backend initialized
-- PostgreSQL configured and connected
-- Modular backend structure created
-- Users module implemented in Route → Controller → Service → Repository pattern
-- Health and DB test endpoints working
-- Frontend centralized API service created
-- Telethon dependency installed and verified
-- Telegram login service scaffold created
+- React + Vite frontend with responsive gallery layout
+- Flask backend with modular Route → Controller → Service → Repository structure
+- PostgreSQL image metadata persistence
+- Telegram Saved Messages image storage through Telethon
+- Telegram-based authentication flow and protected frontend routes
+- Image validation, Pillow processing, metadata extraction, and temporary upload cleanup
+- Image gallery with lazy-loaded thumbnails, download actions, and responsive layout
+- Photo detail viewer with dimensions, file size, MIME type, upload date, description editing, and tag management
+- Search by title, filename, description, AI description, detected text, tags, people, and upload date
+- Batch image upload with per-file progress, failed-file reporting, and automatic dashboard refresh
+- Gallery selection mode with bulk deletion and single-photo deletion from the detail viewer
+- Favorites, albums, people, tags, and health API modules
 
-In progress
-- Telegram user authentication flow
-- Saved Messages validation
-- Image upload pipeline
-- AI vision processing
-- Face recognition integration
-- Smart search
+Planned or optional integrations
+- Ollama vision analysis for richer image descriptions and detected text
+- CompreFace face recognition and people grouping
+- Advanced full-text and vector search
 
 ## Main project structure
 
@@ -302,29 +302,35 @@ git add backend/.gitignore backend/app backend/run.py backend/requirements.txt f
 git commit -m "complete phase 2 modular backend"
 ```
 
-## Next phase plan
+## Feature guide
 
-Phase 3: Telegram authentication
-- secure environment-based login
-- Telethon session management
-- verify Saved Messages access
-- do not expose secrets in frontend or GitHub
+### Photos dashboard
+- Upload one image or select multiple images from the file picker.
+- Watch completed/total upload progress while the batch is running.
+- Successful uploads appear in the dashboard automatically after completion.
+- Select photos to delete several images at once.
+- Open any photo to view metadata, edit its description, add/remove tags, download the original, or delete it.
 
-Phase 4: Image upload
-- Pillow processing
-- Telegram Saved Messages storage
-- PostgreSQL metadata save
+### Search
+Open **Search** from the sidebar and search using a text query, an upload date, or both. Text matching covers titles, filenames, descriptions, AI descriptions, detected text, tags, and people.
 
-Phase 5: AI image understanding
-- Ollama local vision model
-- image description and visible text extraction
+### API endpoints
+Important endpoints include:
 
-Phase 6: Face recognition
-- CompreFace
-- people grouping
+```text
+GET    /api/health
+GET    /api/images?user_id=<id>
+POST   /api/images
+GET    /api/images/<id>/file
+PUT    /api/images/<id>
+DELETE /api/images/<id>
+GET    /api/images/<id>/tags
+POST   /api/images/<id>/tags/<tag_id>
+DELETE /api/images/<id>/tags/<tag_id>
+GET    /api/search?user_id=<id>&q=<text>&date=YYYY-MM-DD
+```
 
-Phase 7: Smart search
-- tag, title, AI text, date, and people search
+The frontend uses `http://127.0.0.1:5000/api` as its API base URL by default.
 
 ## Notes
 
