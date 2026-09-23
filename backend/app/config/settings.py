@@ -35,5 +35,6 @@ COMPREFACE_CONFIG = {
 OLLAMA_CONFIG = {
     "base_url": os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
     "model": os.getenv("OLLAMA_MODEL"),
+    "timeout_seconds": int(os.getenv("OLLAMA_TIMEOUT_SECONDS", "300")),
 }
 

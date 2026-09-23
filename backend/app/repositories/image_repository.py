@@ -73,17 +73,22 @@ def create_image_record(
         conn.close()
 
 
-def get_all_images(user_id):
-    """Get all images for a user, ordered by upload date descending."""
+def get_all_images(user_id, limit=None, offset=0):
+    """Get images for a user, optionally paginated by upload date."""
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
-            cursor.execute("""
+            query = """
                 SELECT {columns}
                 FROM images
                 WHERE user_id = %s
                 ORDER BY upload_date DESC;
-            """.format(columns=IMAGE_COLUMNS), (user_id,))
+            """.format(columns=IMAGE_COLUMNS)
+            values = [user_id]
+            if limit is not None:
+                query = query.replace("ORDER BY upload_date DESC;", "ORDER BY upload_date DESC LIMIT %s OFFSET %s;")
+                values.extend([limit, offset])
+            cursor.execute(query, tuple(values))
             return cursor.fetchall()
     finally:
         conn.close()

@@ -64,7 +64,7 @@ def analyze_image(image_path):
         response = requests.post(
             f"{base_url}/api/generate",
             json={"model": model, "prompt": ANALYSIS_PROMPT, "images": [encoded_image], "format": "json", "stream": False},
-            timeout=120,
+            timeout=OLLAMA_CONFIG.get("timeout_seconds", 120),
         )
         if response.status_code == 404:
             raise OllamaServiceError(f"Ollama model not found: {model}")

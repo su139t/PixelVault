@@ -1,8 +1,11 @@
 import api from "./api";
 
-export const getImages = async (userId) => {
+export const getImages = async (userId, options = {}) => {
   const uid = userId || localStorage.getItem("pv_user") && JSON.parse(localStorage.getItem("pv_user"))?.user_id;
-  const response = await api.get(`/images?user_id=${uid}`);
+  const params = new URLSearchParams({ user_id: uid });
+  if (options.limit) params.set("limit", options.limit);
+  if (options.offset) params.set("offset", options.offset);
+  const response = await api.get(`/images?${params.toString()}`);
   return response.data;
 };
 
@@ -41,6 +44,21 @@ export const addTagToImage = async (imageId, tagId) => {
 
 export const removeTagFromImage = async (imageId, tagId) => {
   const response = await api.delete(`/images/${imageId}/tags/${tagId}`);
+  return response.data;
+};
+
+export const getFavorites = async (userId) => {
+  const response = await api.get(`/favorites?user_id=${userId}`);
+  return response.data;
+};
+
+export const addFavorite = async (userId, imageId) => {
+  const response = await api.post(`/images/${imageId}/favorite`, { user_id: userId });
+  return response.data;
+};
+
+export const removeFavorite = async (userId, imageId) => {
+  const response = await api.delete(`/images/${imageId}/favorite?user_id=${userId}`);
   return response.data;
 };
 

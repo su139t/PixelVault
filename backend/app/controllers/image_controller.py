@@ -45,11 +45,24 @@ def get_images_controller():
     user_id = request.args.get("user_id")
     if not user_id:
         return error_response("user_id query parameter is required", 400)
-        
-    images = get_images(int(user_id))
+
+    limit_value = request.args.get("limit")
+    offset_value = request.args.get("offset", "0")
+    try:
+        limit = int(limit_value) if limit_value else None
+        offset = max(0, int(offset_value))
+        if limit is not None and (limit < 1 or limit > 100):
+            return error_response("limit must be between 1 and 100", 400)
+    except ValueError:
+        return error_response("limit and offset must be integers", 400)
+
+    images = get_images(int(user_id), limit=limit, offset=offset)
+    has_more = False
+    if limit is not None:
+        has_more = len(images) == limit
     
     return success_response(
-        data={"images": [serialize_image(img) for img in images]}
+        data={"images": [serialize_image(img) for img in images], "has_more": has_more}
     )
 
 

@@ -63,6 +63,7 @@ def get_user_favorites(user_id):
                     i.image_id,
                     i.user_id,
                     i.title,
+                    i.description,
                     i.file_name,
                     i.mime_type,
                     i.width,
@@ -72,8 +73,10 @@ def get_user_favorites(user_id):
                     i.telegram_message_id,
                     i.ai_description,
                     i.detected_text,
+                    i.album_id,
                     i.visibility,
-                    i.upload_date
+                    i.upload_date,
+                    i.updated_at
                 FROM images i
                 JOIN favorites f ON i.image_id = f.image_id
                 WHERE f.user_id = %s

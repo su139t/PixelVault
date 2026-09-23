@@ -2,6 +2,7 @@ import os
 import uuid
 import json
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 
 from app.repositories.image_repository import (
@@ -31,10 +32,77 @@ from app.services.compreface_service import recognize_faces
 
 
 logger = logging.getLogger(__name__)
+# Ollama is a local model and concurrent vision requests can exhaust its
+# resources. Keep uploads responsive while processing AI jobs one at a time.
+AI_PROCESSOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="pixelvault-ai")
+
+
+def _status(message):
+    print(f"[PixelVault AI] {message}", flush=True)
+    logger.info(message)
+
+
+def _process_image_in_background(user_id, image_id, image_bytes):
+    """Run optional AI enrichment after the upload response is available."""
+    _status(f"PROCESSING image_id={image_id} status=started")
+    try:
+        try:
+            _status(f"OLLAMA image_id={image_id} status=started")
+            ai_meta = generate_image_metadata(image_bytes)
+            _status(f"OLLAMA image_id={image_id} status=success")
+            from app.db import get_db_connection
+
+            conn = get_db_connection()
+            try:
+                with conn.cursor() as cursor:
+                    cursor.execute("""
+                        UPDATE images
+                        SET ai_description = %s, detected_text = %s
+                        WHERE image_id = %s
+                    """, (ai_meta["ai_description"], ai_meta["detected_text"], image_id))
+                conn.commit()
+            finally:
+                conn.close()
+            _status(f"DATABASE image_id={image_id} status=updated")
+            logger.info("AI metadata saved for image %s", image_id)
+        except OllamaServiceError as error:
+            _status(f"OLLAMA image_id={image_id} status=failed reason={error}")
+            logger.warning("Ollama analysis pending for image %s: %s", image_id, error)
+
+        faces = recognize_faces(image_bytes)
+        if not faces:
+            _status(f"PROCESSING image_id={image_id} status=completed faces=0")
+            return
+
+        existing_people = get_all_people(user_id)
+        people_map = {person[2].lower(): person[0] for person in existing_people}
+        for face in faces:
+            subject = face.get("subject")
+            if not subject:
+                continue
+
+            person_name = subject.strip()
+            person_name_lower = person_name.lower()
+            person_id = people_map.get(person_name_lower)
+            if person_id is None:
+                new_person = create_person(user_id, person_name)
+                person_id = new_person[0]
+                people_map[person_name_lower] = person_id
+
+            add_face_to_image(
+                image_id,
+                person_id,
+                json.dumps(face.get("box", {})),
+                face.get("confidence", 0.0),
+            )
+            _status(f"PROCESSING image_id={image_id} status=completed faces={len(faces)}")
+    except Exception:
+        _status(f"PROCESSING image_id={image_id} status=failed reason=unexpected_error")
+        logger.exception("Background image processing failed for image %s", image_id)
 
 
 async def upload_image(user_id, file, title=None):
-    """Process and upload an image, apply AI analysis, and save to DB."""
+    """Upload an image and queue optional AI enrichment in the background."""
     # 1. Validate and get info
     info = validate_image(file)
     
@@ -72,61 +140,16 @@ async def upload_image(user_id, file, title=None):
     
     image_id = image_record[0]
     
-    # 5. Analyze asynchronously from the upload's perspective; failed AI does
-    # not roll back the Telegram upload or image metadata.
-    try:
-        ai_meta = generate_image_metadata(image_bytes)
-        from app.db import get_db_connection
-        conn = get_db_connection()
-        try:
-            with conn.cursor() as cursor:
-                cursor.execute("""
-                    UPDATE images
-                    SET ai_description = %s, detected_text = %s
-                    WHERE image_id = %s
-                """, (ai_meta["ai_description"], ai_meta["detected_text"], image_id))
-            conn.commit()
-        finally:
-            conn.close()
-    except OllamaServiceError as error:
-        logger.warning("Ollama analysis pending for image %s: %s", image_id, error)
-
-    # 7. Face Recognition (CompreFace)
-    faces = recognize_faces(image_bytes)
-    if faces:
-        # Get existing people to avoid duplicates
-        existing_people = get_all_people(user_id)
-        people_map = {p[2].lower(): p[0] for p in existing_people} # name to id
-        
-        for face in faces:
-            subject = face.get("subject")
-            if not subject:
-                continue
-                
-            confidence = face.get("confidence", 0.0)
-            box = face.get("box", {})
-            
-            # Find or create person
-            person_name = subject.strip()
-            person_name_lower = person_name.lower()
-            
-            if person_name_lower in people_map:
-                person_id = people_map[person_name_lower]
-            else:
-                new_person = create_person(user_id, person_name)
-                person_id = new_person[0]
-                people_map[person_name_lower] = person_id
-                
-            # Link face to image
-            add_face_to_image(image_id, person_id, json.dumps(box), confidence)
+    _status(f"QUEUED image_id={image_id} status=waiting_for_ai_queue")
+    AI_PROCESSOR.submit(_process_image_in_background, user_id, image_id, image_bytes)
 
     return image_record
 
 
 
-def get_images(user_id):
-    """Get all images for a user."""
-    return repo_get_all_images(user_id)
+def get_images(user_id, limit=None, offset=0):
+    """Get images for a user, optionally paginated."""
+    return repo_get_all_images(user_id, limit=limit, offset=offset)
 
 
 def get_image(image_id):

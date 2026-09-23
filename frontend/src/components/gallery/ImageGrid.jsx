@@ -1,7 +1,7 @@
 import { ImageCard } from "./ImageCard";
 import { Image as ImageIcon } from "lucide-react";
 
-export function ImageGrid({ images, onImageClick, onDownload, selectionMode, selectedIds, onToggleSelect }) {
+export function ImageGrid({ images, onImageClick, onDownload, selectionMode, selectedIds, onToggleSelect, favoriteIds, onToggleFavorite }) {
   if (!images || images.length === 0) {
     return (
       <div className="empty-state">
@@ -29,6 +29,8 @@ export function ImageGrid({ images, onImageClick, onDownload, selectionMode, sel
             selectionMode={selectionMode}
             isSelected={selectedIds?.has(image.image_id)}
             onToggleSelect={onToggleSelect}
+            isFavorite={favoriteIds?.has(image.image_id)}
+            onToggleFavorite={onToggleFavorite}
           />
         </div>
       ))}

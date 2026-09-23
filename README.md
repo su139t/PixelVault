@@ -176,12 +176,14 @@ DATABASE_PASSWORD=your_password
 TELEGRAM_API_ID=your_api_id
 TELEGRAM_API_HASH=your_api_hash
 TELEGRAM_PHONE=+919876543210
+FLASK_DEBUG=0
 ```
 
 Important
 - Never commit this file
 - Never share the API hash in GitHub or chat
 - Keep it only in local environment
+- Set `FLASK_DEBUG=1` only when you need the Flask debugger during local development.
 
 ## Git ignore rules
 
