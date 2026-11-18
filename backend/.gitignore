@@ -1,0 +1,28 @@
+# Environment secrets
+.env
+.env.*
+!.env.example
+
+# Python virtual environments
+venv/
+.venv/
+env/
+
+# Python cache and generated files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Telethon session files
+*.session
+*.session-journal
+
+# Test and coverage files
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local tooling files
+.mypy_cache/
+.ruff_cache/
+.DS_Store

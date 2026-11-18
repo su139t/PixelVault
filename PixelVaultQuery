@@ -1,0 +1,228 @@
+-- ============================================
+-- PIXELVAULT DATABASE SCHEMA
+-- PostgreSQL 18
+-- ============================================
+
+-- 1. USERS
+CREATE TABLE users (
+    user_id BIGSERIAL PRIMARY KEY,
+    telegram_user_id BIGINT UNIQUE NOT NULL,
+    name VARCHAR(150) NOT NULL,
+    username VARCHAR(150),
+    email VARCHAR(255),
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- 2. ALBUMS
+CREATE TABLE albums (
+    album_id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    album_name VARCHAR(150) NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_albums_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(user_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT unique_user_album
+        UNIQUE (user_id, album_name)
+);
+
+
+-- 3. IMAGES
+CREATE TABLE images (
+    image_id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+
+    title VARCHAR(255),
+    description TEXT,
+
+    -- Telegram storage references
+    telegram_chat_id BIGINT NOT NULL,
+    telegram_message_id BIGINT NOT NULL,
+
+    -- Image information
+    file_name VARCHAR(255),
+    mime_type VARCHAR(100),
+    file_size BIGINT,
+    width INTEGER,
+    height INTEGER,
+
+    -- AI generated information
+    ai_description TEXT,
+    detected_text TEXT,
+
+    -- Organization
+    album_id BIGINT,
+
+    -- Privacy
+    visibility VARCHAR(20) DEFAULT 'private',
+
+    upload_date TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_images_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(user_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_images_album
+        FOREIGN KEY (album_id)
+        REFERENCES albums(album_id)
+        ON DELETE SET NULL,
+
+    CONSTRAINT check_visibility
+        CHECK (visibility IN ('private', 'public')),
+
+    CONSTRAINT unique_telegram_message
+        UNIQUE (user_id, telegram_chat_id, telegram_message_id)
+);
+
+
+-- 4. TAGS
+CREATE TABLE tags (
+    tag_id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    tag_name VARCHAR(100) NOT NULL,
+
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_tags_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(user_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT unique_user_tag
+        UNIQUE (user_id, tag_name)
+);
+
+
+-- 5. IMAGE-TAGS
+CREATE TABLE image_tags (
+    image_id BIGINT NOT NULL,
+    tag_id BIGINT NOT NULL,
+
+    PRIMARY KEY (image_id, tag_id),
+
+    CONSTRAINT fk_image_tags_image
+        FOREIGN KEY (image_id)
+        REFERENCES images(image_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_image_tags_tag
+        FOREIGN KEY (tag_id)
+        REFERENCES tags(tag_id)
+        ON DELETE CASCADE
+);
+
+
+-- 6. FAVORITES
+CREATE TABLE favorites (
+    favorite_id BIGSERIAL PRIMARY KEY,
+
+    user_id BIGINT NOT NULL,
+    image_id BIGINT NOT NULL,
+
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_favorites_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(user_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_favorites_image
+        FOREIGN KEY (image_id)
+        REFERENCES images(image_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT unique_user_favorite
+        UNIQUE (user_id, image_id)
+);
+
+
+-- 7. PEOPLE
+CREATE TABLE people (
+    person_id BIGSERIAL PRIMARY KEY,
+
+    user_id BIGINT NOT NULL,
+    person_name VARCHAR(150) NOT NULL,
+
+    -- CompreFace subject identifier
+    compreface_subject_id VARCHAR(255),
+
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_people_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(user_id)
+        ON DELETE CASCADE
+);
+
+
+-- 8. IMAGE FACES
+CREATE TABLE image_faces (
+    image_face_id BIGSERIAL PRIMARY KEY,
+
+    image_id BIGINT NOT NULL,
+    person_id BIGINT,
+
+    confidence NUMERIC(5,2),
+
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_image_faces_image
+        FOREIGN KEY (image_id)
+        REFERENCES images(image_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_image_faces_person
+        FOREIGN KEY (person_id)
+        REFERENCES people(person_id)
+        ON DELETE SET NULL
+);
+
+
+-- ============================================
+-- INDEXES FOR FAST SEARCH
+-- ============================================
+
+CREATE INDEX idx_images_user
+ON images(user_id);
+
+CREATE INDEX idx_images_upload_date
+ON images(upload_date);
+
+CREATE INDEX idx_images_album
+ON images(album_id);
+
+CREATE INDEX idx_images_telegram_message
+ON images(telegram_message_id);
+
+CREATE INDEX idx_favorites_user
+ON favorites(user_id);
+
+CREATE INDEX idx_image_faces_person
+ON image_faces(person_id);
+
+CREATE INDEX idx_tags_user
+ON tags(user_id);
+
+CREATE INDEX idx_people_user
+ON people(user_id);
+
+
+-- ============================================
+-- BASIC SEARCH INDEXES
+-- ============================================
+
+CREATE INDEX idx_images_title
+ON images(title);
+
+CREATE INDEX idx_images_detected_text
+ON images USING GIN (to_tsvector('english', COALESCE(detected_text, '')));
+
+CREATE INDEX idx_images_ai_description
+ON images USING GIN (to_tsvector('english', COALESCE(ai_description, '')));
